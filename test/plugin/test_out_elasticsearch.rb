@@ -210,4 +210,13 @@ class ElasticsearchOutput < Test::Unit::TestCase
       driver.run
     }
   end
+
+  def test_failover_when_first_server_dies
+    driver.configure(CONFIG)
+    stub_elastic_unavailable(HOST1)
+    working_server_request = stub_elastic(HOST2)
+    driver.emit(sample_record)
+    driver.run
+    assert_requested(working_server_request)
+  end
 end
