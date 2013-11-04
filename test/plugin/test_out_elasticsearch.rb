@@ -16,15 +16,18 @@ WebMock.disable_net_connect!
 class ElasticsearchOutput < Test::Unit::TestCase
   attr_accessor :index_cmds
 
+  HOST1 = '127.0.0.1'
+  HOST2 = '127.0.0.2'
+
   CONFIG = %[
      <server>
         name test
-        host 127.0.0.1
+        host #{HOST1}
         port 9200
     </server>
      <server>
         name test
-        host 127.0.0.2
+        host #{HOST2}
         port 9200
     </server>
   ]
@@ -42,14 +45,14 @@ class ElasticsearchOutput < Test::Unit::TestCase
     {'age' => 26, 'request_id' => '42'}
   end
 
-  def stub_elastic(url="http://127.0.0.1:9200/_bulk")
-    stub_request(:post, url).with do |req|
+  def stub_elastic(host = HOST1, port = 9200)
+    stub_request(:post, "http://#{host}:#{port}/_bulk").with do |req|
       @index_cmds = req.body.split("\n").map {|r| JSON.parse(r) }
     end
   end
 
-  def stub_elastic_unavailable(url="http://127.0.0.1:9200/_bulk")
-    stub_request(:post, url).to_return(:status => [503, "Service Unavailable"])
+  def stub_elastic_unavailable(host = HOST1, port = 9200)
+    stub_request(:post, "http://#{host}:#{port}/_bulk").to_return(:status => [503, "Service Unavailable"])
   end
 
   def test_writes_to_default_index
@@ -86,7 +89,7 @@ class ElasticsearchOutput < Test::Unit::TestCase
 
   def test_writes_to_speficied_host
     driver.configure("<server>\nhost 192.168.33.50\n</server>\n")
-    elastic_request = stub_elastic("http://192.168.33.50:9200/_bulk")
+    elastic_request = stub_elastic('192.168.33.50')
     driver.emit(sample_record)
     driver.run
     assert_requested(elastic_request)
@@ -94,7 +97,7 @@ class ElasticsearchOutput < Test::Unit::TestCase
 
   def test_writes_to_speficied_port
     driver.configure("<server>\nhost localhost\nport 9201\n</server>\n")
-    elastic_request = stub_elastic("http://localhost:9201/_bulk")
+    elastic_request = stub_elastic('localhost', 9201)
     driver.emit(sample_record)
     driver.run
     assert_requested(elastic_request)
